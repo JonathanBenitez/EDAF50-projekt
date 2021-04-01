@@ -7,7 +7,7 @@
 #include <map>
 #include <algorithm>
 #include "database.h"
-
+#include "command.h"
 using std::pair;
 using std::map;
 using std::vector;
@@ -18,8 +18,11 @@ public:
     DatabaseHandler(string f);
     ~DatabaseHandler(){free(database);};
     
-    template <typename T>
-    T executeCommand(int i, string s); //Dummy empty rType since C++ is too dummy to do return value type inference 
+ //   template <typename T>
+ //   T executeCommand(int i, string s); //Dummy empty rType since C++ is too dummy to do return value type inference 
+   std::vector<std::string> executeCommand(Command_1 c);
+  // template <> 
+   std::string executeCommand(Command_2 c);
 private:
     Database* database;
 };

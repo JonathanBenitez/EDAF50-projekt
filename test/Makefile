@@ -30,7 +30,7 @@ all: $(PROGS)
 
 # Targets rely on implicit rules for compiling and linking
 # The dependency on libclientserver.a is not defined.
-testServer: testServer.o databaseHandler.o
+testServer: testServer.o databaseHandler.o command.o
 myserver: myserver.o
 myclient: myclient.o
 client: client.o messageHandler.o

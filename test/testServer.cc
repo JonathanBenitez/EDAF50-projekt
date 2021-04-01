@@ -1,6 +1,7 @@
 #include "connection.h"
 #include "connectionclosedexception.h"
 #include "server.h"
+#include "command.h"
 #include "databaseHandler.h"
 
 #include <cstdlib>
@@ -27,7 +28,8 @@ vector<unsigned int> readMessage(const shared_ptr<Connection>& conn)
 vector<unsigned int> listNewsGroups(DatabaseHandler& db) {
     vector<unsigned int> ans{};
     vector<string> tp{};
-    tp = db.executeCommand<vector<string>>(1,"");
+    //tp = db.executeCommand<vector<string>>(Command_1(1));
+    tp = db.executeCommand(Command_1(1));
     ans.push_back(20); //ANS_LIST_NG
     //Push back PAR_NUM, size of returned vector, for-loop that also reads size of curr vector.
     for (string st : tp){
@@ -43,7 +45,8 @@ vector<unsigned int> createNG(vector<unsigned int> msg, DatabaseHandler& db) {
     for (unsigned int i = 3; i < msg[2]+3;i++) {
         name.push_back(char(msg[i]));
     }
-    string flag = db.executeCommand<string>(2,name);
+    //string flag = db.executeCommand<string>(Command_2(2, name));
+    string flag = db.executeCommand(Command_2(2, name));
     vector<unsigned int> ans{};
     ans.push_back(21); //ANS_CREATE_NG
     if (flag == "ANS_NAK") {
