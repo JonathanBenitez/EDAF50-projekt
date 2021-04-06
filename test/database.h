@@ -208,12 +208,14 @@ class FileDatabase : public Database{
         string s;
         for (const auto &ng : db.getStructure()) {
             s.append("@@@@@");
-            s.append(std::to_string(ng.first.first));
-            s.append(ng.first.second);
+            s.append(std::to_string(ng.first.first)); //newsgroup
+            s.append(ng.first.second); 
             for (const auto &art : ng.second){
                 s.append("#####");
-                s.append(std::to_string(art.first));
-                s.append(art.second);
+                s.append(std::to_string(art.first)); //articleNumber
+                s.append(art.second[0]);            //article Name
+                s.append(art.second[1]);               //author
+                s.append(art.second[2]);               //article
                 s.append("#####");
             }
             s.append("@@@@@");
@@ -237,21 +239,20 @@ class FileDatabase : public Database{
     string addNG(string name) {
         return db.addNG(name);
     };
-    int addArticle(string author, int articleNum, string article, string newsGroup){
-        return 0;
+    void addArticle(string author, string artName, int articleNum, string& article, string newsGroup){ 
+        return db.addArticle(author, artName, articleNum, article, newsGroup);
     };
-    vector<string> listArticles(string newsGroup){
-        vector<string> s{};
-        return s;
+    vector<string> listArticles(string newsGroup){    
+        return db.listArticles(newsGroup);
     };
     int remArticle(int articleNum, string newsGroup){
-        return 0;
+        return db.remArticle(articleNum, newsGroup);
     };
     int deleteNG(string newsGroup){
-        return 0;
+        return db.deleteNG(newsGroup);
     };
     string getArticle(int articleNum, string newsGroup){
-        return newsGroup;
+        return db.getArticle(articleNum, newsGroup);
     };
 
     
