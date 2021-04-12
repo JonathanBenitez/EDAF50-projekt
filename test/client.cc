@@ -16,13 +16,12 @@ std::vector<std::string> flags{"NEW", "DEL", "READ"};
 std::vector<std::string> commands{"group","ls","article", "lsarticles"};
 
 void addArticleInfo(vector<string>& v) {
-    unsigned int a;
     string t;
-    cout << "Enter unique number of article:" << endl;
-    cin >> a;
-    v.push_back(std::to_string(a));
+    cout << "Enter the name of the article:" << endl;
+    std::getline(cin, t);
+    v.push_back(t);
     cout << "Enter name of author(s):" << endl;
-    cin.ignore(); //Discards \n added in previous cin
+    //Discards \n added in previous cin
     std::getline(cin, t);
     v.push_back(t);
     cout << "Enter article text:" << endl;
@@ -39,10 +38,10 @@ void addReadDeleteInfo(vector<string>& v) {
     string t;
     bool b;
     do {
-        cout << "Enter the number of newsgroup from which you want to " + v[1] + " the article:" << endl;
+        cout << "Enter the number of the article which you want to " + v[1] << endl;
         cin >> a;
         t = std::to_string(a);
-        cout << "Are you sure that you want to " + v[1] +  " article " + v.back() + " from newsgroup " + t + "?(Yes = 1, No = 0)"<< endl;
+        cout << "Are you sure that you want to " + v[1] +  " article " + t + " from newsgroup " + v.back() + "?(Yes = 1, No = 0)"<< endl;
         cin >> b;
     } while (!b);
     v.push_back(t);

@@ -19,13 +19,13 @@ class Database {
 public:
     virtual ~Database(){};
     int groupcounter = 0;
-    virtual void addArticle(string author, string artName, int articleNum, string article, string ng);
-    virtual vector<string> listArticles(string newsGroup);
+    virtual bool addArticle(string author, string artName, string article, int ngNum) = 0;
+    virtual vector<string> listArticles(int newsGroupNumber) = 0;
     virtual vector<string> listNG()= 0;
     virtual string addNG(string name) = 0;
-    virtual int remArticle(int articleNum, string newsGroup);
-    virtual int deleteNG(string newsGroup);
-    virtual string getArticle(int articleNum, string newsGroup);
+    virtual int remArticle(int articleNum, int newsGroup) = 0;
+    virtual int deleteNG(string newsGroup) = 0;
+    virtual vector<string> getArticle(int articleNum, int newsGroup) = 0;
 };
 
 class LocalDatabase : public Database{
@@ -38,6 +38,14 @@ private:
             }
         }
         return 0;
+    };
+    bool hasNGNum(int i){
+        for (auto p : db) {
+            if (p.first.first == i) {
+                return true;
+            }
+        }
+        return false;
     };
     int getNGNum(string name){
         for (auto p : db) {
@@ -69,7 +77,8 @@ public:
     vector<string> listNG(){
         vector<string> s{};
         for (const auto &myPair : db) {
-           s.push_back(std::to_string(myPair.first.first) + " " + myPair.first.second + "\n");
+           s.push_back(std::to_string(myPair.first.first));
+           s.push_back(" " + myPair.first.second + "\n");
         }
         return s;
     };
@@ -81,45 +90,50 @@ public:
         putNG(groupcounter,name);
         return "";
     };
-
-    void addArticle(string author, string artName, int articleNum, string& article, string newsGroup){ 
-        if(!hasNG(newsGroup)){
-            addNG(newsGroup);
-            //TODO: Send error or add new news group? 
+    
+    int getArtNum(int ngNum) { //Gets the largest current article number
+        for (const auto &myPair: db) {
+            if (myPair.first.first == ngNum) {
+                if (myPair.second.size() > 0) {
+                    return (std::prev(myPair.second.end()))->first;
+                }
+                return 1;
+            }
         }
-        int ngNum = getNGNum(newsGroup);
+        return -1;
+    }
+
+    bool addArticle(string author, string artName, string article, int ngNum){ 
+        if(!hasNGNum(ngNum)){
+            return false;
+        }
+        int articleNum = getArtNum(ngNum);
         putArt(ngNum, articleNum, artName, author, article);
-      
-         //return art num or group num or nothing? 
+            return true;
     };
 
-    vector<string> listArticles(string newsGroup){       
+    vector<string> listArticles(int newsGroupNumber){       
         vector<string> s{};
-        if(!hasNG(newsGroup)){
-            //TODO: Send error?
+        if(!hasNGNum(newsGroupNumber)){
             return s;
         }
-        for (auto p : db) {
-              
-            if (p.first.second == newsGroup) {
+        for (auto& p : db) {
+            if (p.first.first == newsGroupNumber) {
                 for (map<int,vector<string>>::reverse_iterator iter = p.second.rbegin(); iter != p.second.rend(); ++iter){
-                    s.push_back("Article name: " + iter->second[0] + " Author: " + iter->second[1] + "\n");
+                    s.push_back(std::to_string(iter->first));
+                    s.push_back(" - Article name: " + iter->second[1] + " Author: " + iter->second[0] + "\n");
                 }
-                return;
+                break;
             }
         }
         return s; 
     };
 
-    int remArticle(int articleNum, string newsGroup){
-         if(!hasNG(newsGroup)){
-            //TODO: Send error?
-            return 0;
-        }
-        for (auto p : db) {
-            if (p.first.second == newsGroup) {
-               auto it = p.second.find(articleNum);
-               p.second.erase(it);
+    int remArticle(int articleNum, int newsGroup){
+        for (auto& p : db) {
+            if (p.first.first == newsGroup) {
+               auto it = (p.second).find(articleNum);
+               (p.second).erase(it);
                return 1;
             }
         }
@@ -127,29 +141,27 @@ public:
     };
 
     int deleteNG(string newsGroup){
-         if(!hasNG(newsGroup)){
-            //TODO: Send error?
-            return 0;
-        }
-        for(auto p : db) { 
-            if(p.first.second ==  newsGroup){
+        for(auto& p : db) { 
+            if(p.first.first == std::stoi(newsGroup)){
                auto it = db.find(p.first);
                db.erase(it);
                return 1;
             }
         }
+        return 0;
     };
-    string getArticle(int articleNum, string newsGroup){ //should we do another with artName and author?
-        for(auto p : db) { 
-            if(p.first.second ==  newsGroup){
-               for(auto art: p.second){
+    vector<string> getArticle(int articleNum, int newsGroup){ //should we do another with artName and author?
+        for(auto& p : db) {
+            if(p.first.first == newsGroup){
+               for(auto& art: p.second){
                    if(art.first == articleNum){
-                       return art.second[2];
+                       return art.second;
                    }
                }
             }
         }
-        return newsGroup;
+        vector<string> temp{};
+        return temp;
     };
 
 };
@@ -188,9 +200,11 @@ class FileDatabase : public Database{
                 auto art = s.substr(start, end-start);
                 std::istringstream iss(art);
                 string artInfo;
+                string author;
+                string title;
                 int artNum;
-                iss >> artNum >> artInfo;
-                db.putArt(ngIndex,artNum,artInfo);
+                iss >> artNum >> author >> title>> artInfo;
+                db.putArt(ngIndex,artNum,title,author,artInfo);
             }
             start = end+5; 
         }
@@ -239,19 +253,19 @@ class FileDatabase : public Database{
     string addNG(string name) {
         return db.addNG(name);
     };
-    void addArticle(string author, string artName, int articleNum, string& article, string newsGroup){ 
-        return db.addArticle(author, artName, articleNum, article, newsGroup);
+    bool addArticle(string author, string artName, string article, int ng){ 
+        return db.addArticle(author, artName, article, ng);
     };
-    vector<string> listArticles(string newsGroup){    
+    vector<string> listArticles(int newsGroup){    
         return db.listArticles(newsGroup);
     };
-    int remArticle(int articleNum, string newsGroup){
+    int remArticle(int articleNum, int newsGroup){
         return db.remArticle(articleNum, newsGroup);
     };
     int deleteNG(string newsGroup){
         return db.deleteNG(newsGroup);
     };
-    string getArticle(int articleNum, string newsGroup){
+    vector<string> getArticle(int articleNum, int newsGroup){
         return db.getArticle(articleNum, newsGroup);
     };
 

@@ -2,14 +2,34 @@
 #include "connectionclosedexception.h"
 #include "server.h"
 #include "databaseHandler.h"
+#include "command.h"
 
 #include <cstdlib>
 #include <iostream>
 #include <memory>
 #include <stdexcept>
 #include <string>
+#include <math.h>
+#include <fstream>
+
+#define INT_SIZE 32
 
 using namespace std;
+
+
+int bitToNumber(vector<unsigned int> vec) {
+    int accum = 0;
+    for (int i = 0; i<INT_SIZE;++i) {
+        accum += vec[i]*pow(2,i);
+    }
+    return accum;
+}
+
+void toBinary(std::vector<unsigned int>& buf, int i){
+    for (int j = 0; j < INT_SIZE; ++j) {
+        buf.push_back((i >> j) & 1);
+    }
+}
 
 /*
  * Read a message from a client.
@@ -33,18 +53,24 @@ vector<unsigned int> listNewsGroups(DatabaseHandler &db)
 {
         vector<unsigned int> ans{};
         vector<string> tp{};
-        tp = db.executeCommand<vector<string>>(1, "");
+        tp = db.executeCommand(Command(1,""),tp);
         ans.push_back(20); //ANS_LIST_NG
-        //Push back PAR_NUM, size of returned vector, for-loop that also reads size of curr vector.
-        for (string st : tp)
-        {
-                for (char c : st)
-                {
-                        ans.push_back(c);
+        ans.push_back(41); //PAR_NUM
+        toBinary(ans,tp.size()/2); //Push back number of groups
+        for (int i = 0; i < tp.size(); i++) {
+            if(i%2 == 0) {
+                ans.push_back(41); //PAR_NUM
+                toBinary(ans, stoi(tp[i]));
+                continue;
+            } else {
+                ans.push_back(40); //PAR_STRING
+                toBinary(ans, tp[i].length()); //String length
+                for (char c : tp[i]) {
+                    ans.push_back(c);
                 }
+            }
         }
-        
-        return ans;
+    return ans;
 }
 
 //    COM_CREATE_NG string_p COM_END
@@ -53,36 +79,38 @@ vector<unsigned int> listNewsGroups(DatabaseHandler &db)
 vector<unsigned int> createNG(vector<unsigned int> msg, DatabaseHandler &db)
 {
         string name;
-        for (unsigned int i = 3; i < msg[2] + 3; i++)
+        vector<unsigned int> bits{};
+        for (unsigned int i = 2; i < 2+INT_SIZE; i++) {
+                bits.push_back(msg[i]);
+        }
+        int g = bitToNumber(bits);
+        for (unsigned int i = 34; i < 34+g; i++)
         {
                 name.push_back(char(msg[i]));
         }
-        string flag = db.executeCommand<string>(2, name);
         vector<unsigned int> ans{};
+        string flag = db.executeCommand(Command(2, name),name);
         ans.push_back(21); //ANS_CREATE_NG
-        if (flag == "ANS_NAK")
-        {
+        if (flag == "ANS_NAK") {
                 ans.push_back(29); //ANS_NACK
-        }
-        else
-        {
+                ans.push_back(50); //ERR_NG_ALREADY_EXISTS
+        } else {
                 ans.push_back(28); //ANS_ACK
         }
         return ans;
-} //do we not have to append the error and ans end
+}
 
 // COM_DELETE_NG num_p COM_END
 // ANS_DELETE_NG [ANS_ACK | ANS_NAK ERR_NG_DOES_NOT_EXIST] ANS_END
-vector<unsigned int> deleteNG(vector<unsigned int> msg)
+vector<unsigned int> deleteNG(vector<unsigned int> msg, DatabaseHandler &db)
 {
-        vector<char> bits{};
-        bits.push_back("PAR_NUM");
-        for (unsigned int i = 1; i < 33; i++)
-        {
-                bits.push_back(char(msg[i]));
+        vector<unsigned int> bits{};
+        for (unsigned int i = 2; i < 2+INT_SIZE; i++) {
+                bits.push_back(msg[i]);
         }
-        string num;                                       //some function to make it into a string. executecommand: stay with string input for consistency
-        bool check = db.executeCommand<bool>(3, num);   //assuming boolean from method deleteNG, might want something else here
+        int num = bitToNumber(bits);
+        bool b = false;
+        bool check = db.executeCommand(Command(3, std::to_string(num)),b);   //assuming boolean from method deleteNG, might want something else here
         vector<unsigned int> ans{};
         ans.push_back(22); //ANS_DELETE_NG
         if (check)
@@ -100,24 +128,37 @@ vector<unsigned int> deleteNG(vector<unsigned int> msg)
 //finalize when return is known!!
 //COM_LIST_ART num_p COM_END
 //ANS_LIST_ART [ANS_ACK num_p [num_p string_p]* |   ANS_NAK ERR_NG_DOES_NOT_EXIST] ANS_END
-vector<unsigned int> listArticles(vector<unsigned int> msg)
+vector<unsigned int> listArticles(vector<unsigned int> msg, DatabaseHandler &db)
 {
-        vector<char> bits{};
-        for (unsigned int i = 1; i < 33; i++)
+        vector<unsigned int> bits{};
+        for (unsigned int i = 2; i < 2+INT_SIZE; i++)
         {
-                bits.push_back(char(msg[i]));
+                bits.push_back(msg[i]);
         }
-        string num; // = numToBits(bits);          
-        // executeCommand to: get the list|list doesnt exist
+        int ngNum  = bitToNumber(bits);
+        vector<string> vec;
+        vec = db.executeCommand(Command(4, std::to_string(ngNum)),vec);
         vector<unsigned int> ans{};
-        if(the list does exist){
         ans.push_back(23); //ANS_LIST_ART
-        ans.push_back(28); //ANS_ACK
-        for(the list)
-        ans.push_back(the numbers and strings)
+        if(vec.size() > 0){
+            ans.push_back(28); //ANS_ACK
+            ans.push_back(41); //PAR_NUM
+            toBinary(ans, vec.size()/2);
+            for(int i = 0; i < vec.size(); ++i) { 
+                if(i%2 == 0) {
+                ans.push_back(41); //PAR_NUM
+                toBinary(ans, stoi(vec[i]));
+                } else {
+                    ans.push_back(40); //PAR_STRING
+                    toBinary(ans, vec[i].length()); //String length
+                    for (char c : vec[i]) {
+                        ans.push_back(c);
+                    }
+                }
+            }
         } else {
-        ans.push_back(29) //ANS_NAK
-        ans.push_back(51) //ERR_NG_DOES_NOT_EXIST
+            ans.push_back(29); //ANS_NAK
+            ans.push_back(51); //ERR_NG_DOES_NOT_EXIST
         
         }
         return ans;
@@ -125,84 +166,143 @@ vector<unsigned int> listArticles(vector<unsigned int> msg)
 
 //COM_CREATE_ART num_p string_p string_p string_p COM_END
 //ANS_CREATE_ART [ANS_ACK | ANS_NAK ERR_NG_DOES_NOT_EXIST] ANS_END
-vector<unsigned int> createArticles(vector<unsigned int> msg)
+vector<unsigned int> createArticle(vector<unsigned int> msg, DatabaseHandler &db)
 {
-        vector<char> bits{};
-        for (unsigned int i = 1; i < 33; i++)
+        vector<unsigned int> bits{};
+        bits.reserve(32);
+        for (unsigned int i = 2; i < 2+INT_SIZE; i++)
         {
-                bits.push_back(char(msg[i]));
+            bits.push_back(msg[i]);
         }
-        string num; // = numToBits(bits); 
+        vector<string> info{};
+        int NGnum = bitToNumber(bits);
+        info.push_back(std::to_string(NGnum));
+        bits.clear();
+        for (unsigned int i = 35; i < 35+INT_SIZE; i++) {
+            bits.push_back(msg[i]);
+        }
+        string title;
+        int titleSize = bitToNumber(bits);
+        bits.clear();
+        int ptr = 67;
+        for (unsigned int i = ptr; i < ptr+titleSize;++i){
+            title.push_back(msg[i]);
+        }
+        info.push_back(title);
+        //cout << "Title pushed back: " << title << " title size: " << titleSize << " ,ptr value " << ptr << "\n";
+        ptr += titleSize+1;
+        for (unsigned int i = ptr; i < ptr+INT_SIZE; i++) {
+            bits.push_back(msg[i]);
+        }
+        int authorSize = bitToNumber(bits);
+        string author;
+        bits.clear();
+        ptr += INT_SIZE;
+        for (unsigned int i = ptr; i<ptr+authorSize;++i) {
+            author.push_back(msg[i]);
+        }
+        info.push_back(author);
+        //cout << "Author pushed back: " << author << " author size: " << authorSize << " ,ptr value " << ptr << "\n";
+        ptr += authorSize+1;
+        for (unsigned int i = ptr; i < ptr+INT_SIZE; i++) {
+            bits.push_back(msg[i]);
+        }
+        int textSize = bitToNumber(bits);
+        bits.clear();
+        //cout << "Textsize successfully read: " << textSize << endl;
+        string text;
+        ptr += INT_SIZE;
+        for (unsigned int i = ptr; i<ptr+textSize;++i) {
+            text.push_back(msg[i]);
+        }
+        info.push_back(text);
+        string fullstring;
+        for (auto s : info) {
+            fullstring += s;
+            fullstring += " ";
+        }
+        //cout << "ARTICLE INFO: " + fullstring;
+        bool b = false;
+        bool a = db.executeCommand(Command(5,fullstring), b); //Info contains [ngnum, artnum, author, text]
         vector<unsigned int> ans{};
-        // executeCommand to create 
         ans.push_back(24);
-        if(the NG exists) {
-        ans.push_back(28);      //ANS_ACK
+        if(a) {
+            ans.push_back(28);      //ANS_ACK
         }
         else {
-        ans.push_back(29);      //ANS_NACK
-        ans.push_back(51);      //ERR_NG_DOES_NOT_EXIST
+            ans.push_back(29);      //ANS_NACK
+            ans.push_back(51);      //ERR_NG_DOES_NOT_EXIST
         }
-        
         return ans;
 }
 
 //COM_DELETE_ART num_p num_p COM_END
 //ANS_DELETE_ART [ANS_ACK | ANS_NAK [ERR_NG_DOES_NOT_EXIST | ERR_ART_DOES_NOT_EXIST]] ANS_END
-vector<unsigned int> deleteArticle(vector<unsigned int> msg)
+vector<unsigned int> deleteArticle(vector<unsigned int> msg, DatabaseHandler &db)
 {
-        vector<char> ngBits{};
-        vector<char> artBits{};
-        for (unsigned int i = 1; i < 33; i++)
+        vector<unsigned int> ngBits{};
+        vector<unsigned int> artBits{};
+        for (unsigned int i = 2; i < 34; i++)
         {
-                ngbits.push_back(char(msg[i]));
+                ngBits.push_back(msg[i]);
         }
-        for (unsigned int i = 34; i < 55; i++){
-                artBits.push_back(char(msg[i]));
+        for (unsigned int i = 35; i < 67; i++){
+                artBits.push_back(msg[i]);
         }
-        //executeCommand to delete + check art && NG
+        int ngNum = bitToNumber(ngBits);
+        int artNum = bitToNumber(artBits);
+        string info{std::to_string(ngNum) + " " +  std::to_string(artNum)};
+        bool b = false;
+        bool answer = db.executeCommand(Command(6, info), b);
         vector<unsigned int> ans{};
         ans.push_back(25); //ANS_DELETE_ART
-        if(no NG) {
-        ans.push_back(29);      //ANS_NAK
-        ans.push_back(51);      //ERR_NG_DOESNT_EXIST
-        } else if (no Art) {
-        ans.push_back(29);      //ANS_NAK
-        ans.push_back(52);       //ERR_ART_DOES_NOT_EXIST
+        if(!answer) {
+            ans.push_back(29);      //ANS_NAK
+            ans.push_back(51);      //ERR_NG_DOESNT_EXIST
         } else {
-        ans.push_back(28);      //ANS_ACK
+            ans.push_back(28);      //ANS_ACK
         }
-        
         return ans;
 }
 
 //COM_GET_ART num_p num_p COM_END
 //ANS_GET_ART [ANS_ACK string_p string_p string_p | ANS_NAK [ERR_NG_DOES_NOT_EXIST | ERR_ART_DOES_NOT_EXIST]] ANS_END
-vector<unsigned int> getArticle(vector<unsigned int> msg)
+vector<unsigned int> getArticle(vector<unsigned int> msg, DatabaseHandler &db)
 {       
-        vector<char> ngBits{};
-        vector<char> artBits{};
-        for (unsigned int i = 1; i < 33; i++)
+        vector<unsigned int> ngBits{};
+        vector<unsigned int> artBits{};
+        for (unsigned int i = 2; i < 34; i++)
         {
-                ngbits.push_back(char(msg[i]));
+                ngBits.push_back(msg[i]);
         }
-        for (unsigned int i = 34; i < 55; i++){
-                artBits.push_back(char(msg[i]));
+        for (unsigned int i = 35; i < 67; i++){
+                artBits.push_back(msg[i]);
         }
-        //executecommand to get article
+        int ngNum = bitToNumber(ngBits);
+        int artNum = bitToNumber(artBits);
+        cout << "Trying to read article " << artNum << " from newsgroup " << ngNum << endl;
+        string info{std::to_string(ngNum) + " " + std::to_string(artNum)};
+        vector<string> res;
+        res = db.executeCommand(Command(7,info),res);
+        
+        for (auto s : res) {
+            cout << s << endl;
+        }
         vector<unsigned int> ans{};             //perhaps send entire vector as string
         ans.push_back(26); //ANS_GET_ART
-        if(no NG) {
-        ans.push_back(29);      //ANS_NAK
-        ans.push_back(51);      //ERR_NG_DOESNT_EXIST
-        } else if (no Art) {
-        ans.push_back(29);      //ANS_NAK
-        ans.push_back(52);       //ERR_ART_DOES_NOT_EXIST
+        if(res.size() == 0) {
+            ans.push_back(29);      //ANS_NAK
+            ans.push_back(51);      //ERR_NG_DOESNT_EXIST
         } else {
-        ans.push_back(28);      //ANS_ACK
-        //push back title, author and text
+            ans.push_back(28);      //ANS_ACK
+            for (auto info : res) {
+                ans.push_back(40); //PAR_NUM
+                toBinary(ans,info.length());
+                for (auto ch : info) {
+                    ans.push_back(ch);
+                }
+            }
         }
-       
         return ans;
 }
 
@@ -218,12 +318,17 @@ vector<unsigned int> interpretMsg(vector<unsigned int> msg, DatabaseHandler &db)
         case 1:
                 return listNewsGroups(db);
         case 2:
-                return createNG(msg, db);
-                //         case 3: return deleteNG(msg);
-                //         case 4: return listArticles(msg);
-                //         case 5: return createArticle(msg);´
-                //         case 6: return deleteArticle(msg);
-                //         case 7: return getArticle(msg);
+                return createNG(msg,db);
+        case 3: 
+                return deleteNG(msg,db);
+        case 4: 
+                return listArticles(msg,db);
+        case 5: 
+                return createArticle(msg,db);
+        case 6: 
+                return deleteArticle(msg,db);
+        case 7: 
+                return getArticle(msg,db);
         default:
                 throw ConnectionClosedException();
         }
@@ -238,7 +343,6 @@ void writeString(const shared_ptr<Connection> &conn, const vector<unsigned int> 
         {
                 conn->write(c);
         }
-        conn->write('$');
 }
 
 Server init(int argc, char *argv[])
