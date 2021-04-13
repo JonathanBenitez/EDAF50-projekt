@@ -31,7 +31,8 @@ bool DatabaseHandler::executeCommand(Command c, bool b)
                 std::istringstream iss(msg);
                 int artNum;
                 string author, artname, text;
-                iss >> artNum >> author >> artname >> text;
+                iss >> artNum >> author >> artname;
+                getline(iss, text);
                 out = database->addArticle(author, artname, text, artNum);
             }
             break;

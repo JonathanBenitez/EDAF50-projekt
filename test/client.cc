@@ -24,7 +24,7 @@ void addArticleInfo(vector<string>& v) {
     //Discards \n added in previous cin
     std::getline(cin, t);
     v.push_back(t);
-    cout << "Enter article text:" << endl;
+    cout << "Enter article text, any amount of lines, end with empty line:" << endl;
     t = "";
     string temp;
     while(std::getline(cin, temp) && !temp.empty()) {

@@ -123,6 +123,17 @@ void listvals(const Connection& conn, std::string& s){
     }
 }
 
+void displayinfo(const Connection& conn, std::string& s){
+    for (int i = 0; i < 3; ++i){
+        conn.read(); //remove PAR_STRING
+        int j = readNumber(conn);
+        for (int k = 0; k < j; ++k){
+            s.push_back(conn.read());
+        }
+        s.push_back('\n');
+    }
+}
+
 void interpretAnswer(char ch,const Connection& conn, std::string& s) {
     
     switch(ch) {
@@ -180,7 +191,16 @@ void interpretAnswer(char ch,const Connection& conn, std::string& s) {
             }
             break;
         } //art deleted/not deleted
-        case 26: {} //read art
+        case 26: {
+            ch = conn.read();
+            if(ch == 28) { //ANS_ACK
+                displayinfo(conn,s);
+            } else { //ANS_NAK
+                s += "Article could not be read, no article with that number exists in the given newsgroup\n";
+                conn.read(); //remove ERR_NG Not completely right.
+            }
+            break;
+        }
     }
 }
 // ANS_LIST_NG    = 20, // answer list newsgroups

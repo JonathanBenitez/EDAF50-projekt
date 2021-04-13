@@ -296,7 +296,7 @@ vector<unsigned int> getArticle(vector<unsigned int> msg, DatabaseHandler &db)
         } else {
             ans.push_back(28);      //ANS_ACK
             for (auto info : res) {
-                ans.push_back(40); //PAR_NUM
+                ans.push_back(40); //PAR_STRING
                 toBinary(ans,info.length());
                 for (auto ch : info) {
                     ans.push_back(ch);
