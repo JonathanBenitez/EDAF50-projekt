@@ -78,7 +78,7 @@ public:
         vector<string> s{};
         for (const auto &myPair : db) {
            s.push_back(std::to_string(myPair.first.first));
-           s.push_back(" " + myPair.first.second + "\n");
+           s.push_back(myPair.first.second);
         }
         return s;
     };
@@ -95,7 +95,7 @@ public:
         for (const auto &myPair: db) {
             if (myPair.first.first == ngNum) {
                 if (myPair.second.size() > 0) {
-                    return (std::prev(myPair.second.end()))->first;
+                    return (std::prev(myPair.second.end()))->first + 1;
                 }
                 return 1;
             }
@@ -104,10 +104,12 @@ public:
     }
 
     bool addArticle(string author, string artName, string article, int ngNum){ 
+        std::cout << "We add article: " << article << " to ngNum " << ngNum << std::endl;
         if(!hasNGNum(ngNum)){
             return false;
         }
         int articleNum = getArtNum(ngNum);
+        std::cout << "Our new article number is: " << articleNum << std::endl;
         putArt(ngNum, articleNum, artName, author, article);
             return true;
     };

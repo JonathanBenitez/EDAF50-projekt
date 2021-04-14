@@ -176,7 +176,7 @@ vector<unsigned int> listArticles(vector<unsigned int> msg, DatabaseHandler &db)
 //ANS_CREATE_ART [ANS_ACK | ANS_NAK ERR_NG_DOES_NOT_EXIST] ANS_END
 vector<unsigned int> createArticle(vector<unsigned int> msg, DatabaseHandler &db)
 {
-        cout << "We start reading article" << endl;
+        //cout << "We start reading article" << endl;
         vector<unsigned int> bits{};
         bits.reserve(4);
         int pointer = 2;
@@ -272,10 +272,6 @@ vector<unsigned int> getArticle(vector<unsigned int> msg, DatabaseHandler &db)
         string info{std::to_string(ngNum) + " " + std::to_string(artNum)};
         vector<string> res;
         res = db.executeCommand(Command(7,info),res);
-        
-        for (auto s : res) {
-            cout << s << endl;
-        }
         vector<unsigned int> ans{};             //perhaps send entire vector as string
         ans.push_back(26); //ANS_GET_ART
         if(res.size() == 0) {

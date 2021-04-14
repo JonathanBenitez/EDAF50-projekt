@@ -18,9 +18,7 @@ using std::string;
 class DatabaseHandler {
 public:
     DatabaseHandler(string f);
-    ~DatabaseHandler(){
-        std::cout << "DBhandler destructor called";
-        delete(database);};
+    ~DatabaseHandler(){delete(database);};
     bool executeCommand(Command c,bool b);
     vector<string> executeCommand(Command c,vector<string> vec);
     string executeCommand(Command c,string s);
