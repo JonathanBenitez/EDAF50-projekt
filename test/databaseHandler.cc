@@ -30,9 +30,11 @@ bool DatabaseHandler::executeCommand(Command c, bool b)
             case 5: {
                 std::istringstream iss(msg);
                 int artNum;
+                iss >> artNum;
                 string author, artname, text;
-                iss >> artNum >> author >> artname;
-                getline(iss, text);
+                getline(iss, artname, '{');
+                getline(iss, author, '{');
+                getline(iss, text, '{');
                 out = database->addArticle(author, artname, text, artNum);
             }
             break;
@@ -67,6 +69,7 @@ vector<string> DatabaseHandler::executeCommand(Command c, vector<string> vec)
                 int ngNum,artNum;
                 iss >> ngNum >> artNum;
                 out = database->getArticle(artNum,ngNum);
+                break;
             }
             default:return out;
             }

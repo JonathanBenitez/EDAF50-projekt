@@ -151,7 +151,11 @@ vector<unsigned int> listArticles(vector<unsigned int> msg, DatabaseHandler &db)
         if(vec.size() > 0){
             ans.push_back(28); //ANS_ACK
             ans.push_back(41); //PAR_NUM
-            toBinary(ans, vec.size()/2);
+            unsigned int sz = vec.size()/2;
+            toBinary(ans, sz);
+            if (sz == 0) { //Separate between no NG (empty vector) and no articles but NG exists
+                return ans;
+            }
             for(long unsigned int i = 0; i < vec.size(); ++i) { 
                 if(i%2 == 0) {
                 ans.push_back(41); //PAR_NUM
@@ -183,7 +187,6 @@ vector<unsigned int> createArticle(vector<unsigned int> msg, DatabaseHandler &db
         pushToVector(msg,bits,pointer,INT_SIZE);
         vector<string> info{};
         int NGnum = bitToNumber(bits);
-        info.push_back(std::to_string(NGnum));
         //cout << "Pushed back NGnum successfully: " << NGnum;
         bits.clear();
         ++pointer;
@@ -210,10 +213,10 @@ vector<unsigned int> createArticle(vector<unsigned int> msg, DatabaseHandler &db
         string text;
         pushToVector(msg,text,pointer,textSize);
         info.push_back(text);
-        string fullstring;
+        string fullstring = std::to_string(NGnum);
         for (auto s : info) {
             fullstring += s;
-            fullstring += " ";
+            fullstring += "{"; //Hack as we dont know how to make command templates work properly
         }
         //cout << "ARTICLE INFO: " + fullstring;
         bool b = false;
@@ -272,7 +275,7 @@ vector<unsigned int> getArticle(vector<unsigned int> msg, DatabaseHandler &db)
         string info{std::to_string(ngNum) + " " + std::to_string(artNum)};
         vector<string> res;
         res = db.executeCommand(Command(7,info),res);
-        vector<unsigned int> ans{};             //perhaps send entire vector as string
+        vector<unsigned int> ans{};
         ans.push_back(26); //ANS_GET_ART
         if(res.size() == 0) {
             ans.push_back(29);      //ANS_NAK

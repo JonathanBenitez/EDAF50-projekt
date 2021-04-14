@@ -97,19 +97,17 @@ public:
                 if (myPair.second.size() > 0) {
                     return (std::prev(myPair.second.end()))->first + 1;
                 }
-                return 1;
+                return 0;
             }
         }
         return -1;
     }
 
     bool addArticle(string author, string artName, string article, int ngNum){ 
-        std::cout << "We add article: " << article << " to ngNum " << ngNum << std::endl;
         if(!hasNGNum(ngNum)){
             return false;
         }
         int articleNum = getArtNum(ngNum);
-        std::cout << "Our new article number is: " << articleNum << std::endl;
         putArt(ngNum, articleNum, artName, author, article);
             return true;
     };
@@ -121,12 +119,15 @@ public:
         }
         for (auto& p : db) {
             if (p.first.first == newsGroupNumber) {
-                for (map<int,vector<string>>::reverse_iterator iter = p.second.rbegin(); iter != p.second.rend(); ++iter){
+                for (map<int,vector<string>>::iterator iter = p.second.begin(); iter != p.second.end(); ++iter){
                     s.push_back(std::to_string(iter->first));
-                    s.push_back(" - Article name: " + iter->second[1] + " Author: " + iter->second[0] + "\n");
+                    s.push_back(iter->second[0]);
                 }
                 break;
             }
+        }
+        if(s.size() == 0){
+            s.push_back(" ");
         }
         return s; 
     };
@@ -135,15 +136,19 @@ public:
         for (auto& p : db) {
             if (p.first.first == newsGroup) {
                auto it = (p.second).find(articleNum);
-               (p.second).erase(it);
-               return 1;
+               if (it != (p.second).end()) {
+                (p.second).erase(it);
+                return 1;
+               } else {
+                return 0;
+               }
             }
         }
         return 0;
     };
 
     int deleteNG(string newsGroup){
-        for(auto& p : db) { 
+        for(auto& p : db) {
             if(p.first.first == std::stoi(newsGroup)){
                auto it = db.find(p.first);
                db.erase(it);
@@ -152,7 +157,7 @@ public:
         }
         return 0;
     };
-    vector<string> getArticle(int articleNum, int newsGroup){ //should we do another with artName and author?
+    vector<string> getArticle(int articleNum, int newsGroup){
         for(auto& p : db) {
             if(p.first.first == newsGroup){
                for(auto& art: p.second){
