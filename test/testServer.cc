@@ -12,22 +12,37 @@
 #include <math.h>
 #include <fstream>
 
-#define INT_SIZE 32
+#define INT_SIZE 4
 
 using namespace std;
 
-
-int bitToNumber(vector<unsigned int> vec) {
-    int accum = 0;
-    for (int i = 0; i<INT_SIZE;++i) {
-        accum += vec[i]*pow(2,i);
-    }
-    return accum;
+int bitToNumber(vector<unsigned int>& vec)
+{
+    unsigned char byte1 = vec[0];
+    unsigned char byte2 = vec[1];
+    unsigned char byte3 = vec[2];
+    unsigned char byte4 = vec[3];
+    return (byte1 << 24) | (byte2 << 16) | (byte3 << 8) | byte4;
 }
 
 void toBinary(std::vector<unsigned int>& buf, int i){
-    for (int j = 0; j < INT_SIZE; ++j) {
-        buf.push_back((i >> j) & 1);
+    buf.push_back(i>>24);
+    buf.push_back(i>>16);
+    buf.push_back(i>>8);
+    buf.push_back(i);
+}
+
+
+void pushToVector(vector<unsigned int>& msg, vector<unsigned int>& target, int& pointer, int size){
+    auto end = pointer+size;
+    for (; pointer < end;++pointer){
+        target.push_back(msg[pointer]);
+    }
+}
+void pushToVector(vector<unsigned int>& msg, string& target, int& pointer, int size){
+    auto end = pointer+size;
+    for (; pointer < end;++pointer){
+        target.push_back(char(msg[pointer]));
     }
 }
 
@@ -40,7 +55,7 @@ vector<unsigned int> readMessage(const shared_ptr<Connection> &conn)
         unsigned int g{0};
         while ((g = conn->read()) != 8)
         {
-                inpt.push_back(g);
+            inpt.push_back(g);
         }
         return inpt;
 }
@@ -57,7 +72,7 @@ vector<unsigned int> listNewsGroups(DatabaseHandler &db)
         ans.push_back(20); //ANS_LIST_NG
         ans.push_back(41); //PAR_NUM
         toBinary(ans,tp.size()/2); //Push back number of groups
-        for (int i = 0; i < tp.size(); i++) {
+        for (long unsigned int i = 0; i < tp.size(); i++) {
             if(i%2 == 0) {
                 ans.push_back(41); //PAR_NUM
                 toBinary(ans, stoi(tp[i]));
@@ -80,14 +95,10 @@ vector<unsigned int> createNG(vector<unsigned int> msg, DatabaseHandler &db)
 {
         string name;
         vector<unsigned int> bits{};
-        for (unsigned int i = 2; i < 2+INT_SIZE; i++) {
-                bits.push_back(msg[i]);
-        }
+        int pointer = 2;
+        pushToVector(msg,bits,pointer,INT_SIZE);
         int g = bitToNumber(bits);
-        for (unsigned int i = 34; i < 34+g; i++)
-        {
-                name.push_back(char(msg[i]));
-        }
+        pushToVector(msg,name,pointer,g);
         vector<unsigned int> ans{};
         string flag = db.executeCommand(Command(2, name),name);
         ans.push_back(21); //ANS_CREATE_NG
@@ -105,9 +116,8 @@ vector<unsigned int> createNG(vector<unsigned int> msg, DatabaseHandler &db)
 vector<unsigned int> deleteNG(vector<unsigned int> msg, DatabaseHandler &db)
 {
         vector<unsigned int> bits{};
-        for (unsigned int i = 2; i < 2+INT_SIZE; i++) {
-                bits.push_back(msg[i]);
-        }
+        int pointer = 2;
+        pushToVector(msg,bits,pointer,INT_SIZE);
         int num = bitToNumber(bits);
         bool b = false;
         bool check = db.executeCommand(Command(3, std::to_string(num)),b);   //assuming boolean from method deleteNG, might want something else here
@@ -131,10 +141,8 @@ vector<unsigned int> deleteNG(vector<unsigned int> msg, DatabaseHandler &db)
 vector<unsigned int> listArticles(vector<unsigned int> msg, DatabaseHandler &db)
 {
         vector<unsigned int> bits{};
-        for (unsigned int i = 2; i < 2+INT_SIZE; i++)
-        {
-                bits.push_back(msg[i]);
-        }
+        int pointer = 2;
+        pushToVector(msg,bits,pointer,INT_SIZE);
         int ngNum  = bitToNumber(bits);
         vector<string> vec;
         vec = db.executeCommand(Command(4, std::to_string(ngNum)),vec);
@@ -144,7 +152,7 @@ vector<unsigned int> listArticles(vector<unsigned int> msg, DatabaseHandler &db)
             ans.push_back(28); //ANS_ACK
             ans.push_back(41); //PAR_NUM
             toBinary(ans, vec.size()/2);
-            for(int i = 0; i < vec.size(); ++i) { 
+            for(long unsigned int i = 0; i < vec.size(); ++i) { 
                 if(i%2 == 0) {
                 ans.push_back(41); //PAR_NUM
                 toBinary(ans, stoi(vec[i]));
@@ -168,53 +176,39 @@ vector<unsigned int> listArticles(vector<unsigned int> msg, DatabaseHandler &db)
 //ANS_CREATE_ART [ANS_ACK | ANS_NAK ERR_NG_DOES_NOT_EXIST] ANS_END
 vector<unsigned int> createArticle(vector<unsigned int> msg, DatabaseHandler &db)
 {
+        cout << "We start reading article" << endl;
         vector<unsigned int> bits{};
-        bits.reserve(32);
-        for (unsigned int i = 2; i < 2+INT_SIZE; i++)
-        {
-            bits.push_back(msg[i]);
-        }
+        bits.reserve(4);
+        int pointer = 2;
+        pushToVector(msg,bits,pointer,INT_SIZE);
         vector<string> info{};
         int NGnum = bitToNumber(bits);
         info.push_back(std::to_string(NGnum));
+        //cout << "Pushed back NGnum successfully: " << NGnum;
         bits.clear();
-        for (unsigned int i = 35; i < 35+INT_SIZE; i++) {
-            bits.push_back(msg[i]);
-        }
+        ++pointer;
+        pushToVector(msg,bits,pointer,INT_SIZE);
         string title;
         int titleSize = bitToNumber(bits);
         bits.clear();
-        int ptr = 67;
-        for (unsigned int i = ptr; i < ptr+titleSize;++i){
-            title.push_back(msg[i]);
-        }
+        pushToVector(msg,title,pointer,titleSize);
         info.push_back(title);
-        //cout << "Title pushed back: " << title << " title size: " << titleSize << " ,ptr value " << ptr << "\n";
-        ptr += titleSize+1;
-        for (unsigned int i = ptr; i < ptr+INT_SIZE; i++) {
-            bits.push_back(msg[i]);
-        }
+        //cout << "Title pushed back: " << title << " title size: " << titleSize << " ,ptr value " << pointer << "\n";
+        ++pointer;
+        pushToVector(msg,bits,pointer,INT_SIZE);
         int authorSize = bitToNumber(bits);
         string author;
         bits.clear();
-        ptr += INT_SIZE;
-        for (unsigned int i = ptr; i<ptr+authorSize;++i) {
-            author.push_back(msg[i]);
-        }
+        pushToVector(msg,author,pointer,authorSize);
         info.push_back(author);
-        //cout << "Author pushed back: " << author << " author size: " << authorSize << " ,ptr value " << ptr << "\n";
-        ptr += authorSize+1;
-        for (unsigned int i = ptr; i < ptr+INT_SIZE; i++) {
-            bits.push_back(msg[i]);
-        }
+        //cout << "Author pushed back: " << author << " author size: " << authorSize << " ,ptr value " << pointer << "\n";
+        ++pointer;
+        pushToVector(msg,bits,pointer,INT_SIZE);
         int textSize = bitToNumber(bits);
         bits.clear();
         //cout << "Textsize successfully read: " << textSize << endl;
         string text;
-        ptr += INT_SIZE;
-        for (unsigned int i = ptr; i<ptr+textSize;++i) {
-            text.push_back(msg[i]);
-        }
+        pushToVector(msg,text,pointer,textSize);
         info.push_back(text);
         string fullstring;
         for (auto s : info) {
@@ -242,13 +236,10 @@ vector<unsigned int> deleteArticle(vector<unsigned int> msg, DatabaseHandler &db
 {
         vector<unsigned int> ngBits{};
         vector<unsigned int> artBits{};
-        for (unsigned int i = 2; i < 34; i++)
-        {
-                ngBits.push_back(msg[i]);
-        }
-        for (unsigned int i = 35; i < 67; i++){
-                artBits.push_back(msg[i]);
-        }
+        int pointer = 2;
+        pushToVector(msg,ngBits,pointer,INT_SIZE);
+        ++pointer;
+        pushToVector(msg,artBits,pointer,INT_SIZE);
         int ngNum = bitToNumber(ngBits);
         int artNum = bitToNumber(artBits);
         string info{std::to_string(ngNum) + " " +  std::to_string(artNum)};
@@ -271,16 +262,13 @@ vector<unsigned int> getArticle(vector<unsigned int> msg, DatabaseHandler &db)
 {       
         vector<unsigned int> ngBits{};
         vector<unsigned int> artBits{};
-        for (unsigned int i = 2; i < 34; i++)
-        {
-                ngBits.push_back(msg[i]);
-        }
-        for (unsigned int i = 35; i < 67; i++){
-                artBits.push_back(msg[i]);
-        }
+        int pointer = 2;
+        pushToVector(msg,ngBits,pointer,INT_SIZE);
+        ++pointer;
+        pushToVector(msg,artBits,pointer,INT_SIZE);
         int ngNum = bitToNumber(ngBits);
         int artNum = bitToNumber(artBits);
-        cout << "Trying to read article " << artNum << " from newsgroup " << ngNum << endl;
+        //cout << "Trying to read article " << artNum << " from newsgroup " << ngNum << endl;
         string info{std::to_string(ngNum) + " " + std::to_string(artNum)};
         vector<string> res;
         res = db.executeCommand(Command(7,info),res);
@@ -374,7 +362,7 @@ Server init(int argc, char *argv[])
 }
 
 int main(int argc, char *argv[])
-{
+{        
         auto server = init(argc, argv);
         string s;
         cout << "Would you like to connect the server to a local database or disk?(L/D)\n";

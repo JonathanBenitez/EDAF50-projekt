@@ -8,6 +8,7 @@
 #include <algorithm>
 #include "database.h"
 #include "command.h"
+#include <iostream>
 
 using std::pair;
 using std::map;
@@ -17,7 +18,9 @@ using std::string;
 class DatabaseHandler {
 public:
     DatabaseHandler(string f);
-    ~DatabaseHandler(){free(database);};
+    ~DatabaseHandler(){
+        std::cout << "DBhandler destructor called";
+        delete(database);};
     bool executeCommand(Command c,bool b);
     vector<string> executeCommand(Command c,vector<string> vec);
     string executeCommand(Command c,string s);

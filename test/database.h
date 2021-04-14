@@ -1,7 +1,7 @@
 #ifndef DATABASE_H_INCLUDED
 #define DATABASE_H_INCLUDED
 
-
+#include <iostream>
 #include <string>
 using std::string;
 #include <fstream>
@@ -171,33 +171,21 @@ class FileDatabase : public Database{
     LocalDatabase db;
     string filepath;
     void parseAndFill(string& s) {
-        size_t start = 0;
+        size_t start = 4;
         size_t end;
         int ngIndex = 0;
-        while ((end = s.find_first_of("@#", start)) != string::npos) //@ -> NG, # -> Art
+        while ((end = s.find_first_of("@#", start+1)) != string::npos) //@ -> NG, # -> Art
         {
             if (s[start] == '@') {
-                if(s[end+4] != '@') {
-                    while((end = s.find_first_of("@", end+1)) != string::npos) {
-                        if (s[end+4] == '@') {
-                            break;
-                        }
-                    }
-                }
-                auto ng = s.substr(start, end-start);
+                auto ng = s.substr(start+1, end-(start+1));
+                std::cout << "We find NG part: " << ng << std::endl;
                 std::istringstream iss(ng);
                 string ngName;
                 iss >> ngIndex >> ngName;
                 db.putNG(ngIndex,ngName);
             } else {
-                if(s[end+4] != '#') {
-                    while((end = s.find_first_of("#", end+1)) != string::npos) {
-                        if (s[end+4] == '#') {
-                            break;
-                        }
-                    }
-                }
                 auto art = s.substr(start, end-start);
+                std::cout << "We find ART part: " << art << std::endl;
                 std::istringstream iss(art);
                 string artInfo;
                 string author;
@@ -211,12 +199,14 @@ class FileDatabase : public Database{
     };
     void init(){
         ifstream infile;
-        infile.open(filepath + ".txt");
+        infile.open(filepath + ".txt", std::fstream::out);
         string s((std::istreambuf_iterator<char>(infile)), std::istreambuf_iterator<char>());
         parseAndFill(s);
         infile.close();
+        std::cout << "Constructor finished\n";
     };
     void dest() {
+        std::cout << "Destructor called\n";
         ofstream outfile;
         outfile.open(filepath + ".txt");
         string s;

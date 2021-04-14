@@ -1,5 +1,6 @@
 #include "messageHandler.h"
 #include <iomanip>
+#include <algorithm>
 #include <utility>
 #include <vector>
 #include <string>
@@ -19,17 +20,20 @@ void pushString(const std::string& v, std::vector<unsigned int>& buffer){
     }
 }
 
-void toBinary(std::vector<unsigned int>& buf, int i){
-    for (int j = 0; j < 32; ++j) {
-        buf.push_back((i >> j) & 1);
-    }
+int readNumber(const Connection& conn)
+{
+        unsigned char byte1 = conn.read();
+        unsigned char byte2 = conn.read();
+        unsigned char byte3 = conn.read();
+        unsigned char byte4 = conn.read();
+        return (byte1 << 24) | (byte2 << 16) | (byte3 << 8) | byte4;
 }
-int bitToNumber(std::vector<unsigned int> vec) {
-    int accum = 0;
-    for (int i = 0; i<32;++i) {
-        accum += vec[i]*pow(2,i);
-    }
-    return accum;
+
+void toBinary(std::vector<unsigned int>& buf, int i){
+    buf.push_back(i>>24);
+    buf.push_back(i>>16);
+    buf.push_back(i>>8);
+    buf.push_back(i);
 }
 
 void MessageHandler::match(std::vector<std::string>& v, std::vector<unsigned int>& buffer) {
@@ -95,14 +99,6 @@ void fillText(std::string& s, const Connection& conn, unsigned int protocol){
     while ((ch = conn.read()) != protocol) {
         s += ch;
     }
-}
-
-int readNumber(const Connection& conn) {
-    std::vector<unsigned int> vec{};
-    for (int i = 0; i < 32; ++i) {
-        vec.push_back(conn.read());
-    }
-    return bitToNumber(vec);
 }
 
 void addTokens(const Connection& conn, std::string& s, int tokens) {
