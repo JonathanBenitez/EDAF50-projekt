@@ -112,10 +112,11 @@ void listvals(const Connection& conn, std::string& s){
     int numNGs = readNumber(conn);
     for (int i = 0; i < numNGs; ++i) {
         conn.read(); //throw away PAR_NUM
-        s += std::to_string(readNumber(conn)); //art num
+        s += std::to_string(readNumber(conn)) + " "; //art num
         conn.read(); //throw away PAR_STRING
         int tokens = readNumber(conn);
         addTokens(conn, s, tokens);
+        s += "\n";
     }
 }
 
@@ -143,7 +144,7 @@ void interpretAnswer(char ch,const Connection& conn, std::string& s) {
                 s += "Newsgroup successfully created\n";
             } else { //ANS_NAK
                 s += "Newsgroup could not be created, a group with that name already exists\n";
-                conn.read(); //remove ERR_NG Not completely right.
+                conn.read(); //remove ERR_NG
             }
             break;
         }
@@ -153,7 +154,7 @@ void interpretAnswer(char ch,const Connection& conn, std::string& s) {
                 s += "Newsgroup successfully deleted\n";
             } else { //ANS_NAK
                 s += "Newsgroup could not be deleted, no group with that number exists\n";
-                conn.read(); //remove ERR_NG Not completely right.
+                conn.read(); //remove ERR_NG
             }
             break;
         }
@@ -173,7 +174,7 @@ void interpretAnswer(char ch,const Connection& conn, std::string& s) {
                 s += "Article successfully created\n";
             } else { //ANS_NAK
                 s += "Article could not be created, article already exists or newsgroup with the given number does not\n";
-                conn.read(); //remove ERR_NG Not completely right.
+                conn.read(); //remove ERR_NG
             }
             break;
         } //art created/not created
@@ -183,7 +184,7 @@ void interpretAnswer(char ch,const Connection& conn, std::string& s) {
                 s += "Article successfully deleted\n";
             } else { //ANS_NAK
                 s += "Article could not be deleted, no article with that number exists in the given newsgroup\n";
-                conn.read(); //remove ERR_NG Not completely right.
+                conn.read(); //remove ERR_NG
             }
             break;
         } //art deleted/not deleted
@@ -193,22 +194,12 @@ void interpretAnswer(char ch,const Connection& conn, std::string& s) {
                 displayinfo(conn,s);
             } else { //ANS_NAK
                 s += "Article could not be read, no article with that number exists in the given newsgroup\n";
-                conn.read(); //remove ERR_NG Not completely right.
+                conn.read(); //remove ERR_NG
             }
             break;
         }
     }
 }
-// ANS_LIST_NG    = 20, // answer list newsgroups
-// ANS_CREATE_NG  = 21, // answer create newsgroup
-// ANS_DELETE_NG  = 22, // answer delete newsgroup
-// ANS_LIST_ART   = 23, // answer list articles
-// ANS_CREATE_ART = 24, // answer create article
-// ANS_DELETE_ART = 25, // answer delete article
-// ANS_GET_ART    = 26, // answer get article
-// ANS_END        = 27, // answer end
-// ANS_ACK        = 28, // acknowledge
-// ANS_NAK        = 29, // negative acknowledge
 
 std::string MessageHandler::readString(const Connection& conn)
 {

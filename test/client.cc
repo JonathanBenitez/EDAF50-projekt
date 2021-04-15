@@ -21,14 +21,13 @@ void addArticleInfo(vector<string>& v) {
     std::getline(cin, t);
     v.push_back(t);
     cout << "Enter name of author(s):" << endl;
-    //Discards \n added in previous cin
     std::getline(cin, t);
     v.push_back(t);
     cout << "Enter article text, any amount of lines, end with empty line:" << endl;
     t = "";
     string temp;
     while(std::getline(cin, temp) && !temp.empty()) {
-        t += temp; //Fix that i need to hit backspace twice
+        t += temp;
     }
     v.push_back(t);
 }
@@ -52,7 +51,7 @@ void addGroupInfo(vector<string>& v) {
     unsigned int u;
     if (v[1] == "NEW") {
         cout << "Enter the name of the group to create:" << endl;
-        cin >> t;
+        std::getline(cin, t);
         v.push_back(t);
     } else {
         cout << "Enter the number of the group to delete:" << endl;
@@ -63,9 +62,12 @@ void addGroupInfo(vector<string>& v) {
 }
 
 
-void inputError(string s){
-    std::cout << "Invalid input!\n" + s << endl;
-    exit(-1);
+void inputError(std::string s){
+    if (s.length() > 0) {
+        throw s + "\n";
+    } else {
+        throw std::string("Invalid input!\n");
+    }
 }
 
 void listCommands()
@@ -76,6 +78,7 @@ void listCommands()
     cout << "group FLAG - execute action FLAG on newsgroup, possible flags: NEW, DEL" << endl;
     cout << "lsarticles GROUPNR - list all articles in newsgroup with number GROUPNR" << endl;
     cout << "article FLAG GROUPNR - execute action FLAG on article in group GROUPNR, possible flags: NEW, DEL, READ" << endl;
+    cout << "To terminate, press CTRL + C" << endl;
     cout << "----------------------------------" << endl;
     cout << "Input:";
 }
@@ -111,7 +114,10 @@ vector<string> buildInput()
     if(std::find(commands.begin(), commands.end(), temp[0]) == commands.end()) {
         inputError("Invalid command");
     }
-    if (sz == 2) {
+    if (sz == 2){
+        if(temp[0] != "group" && temp[0] != "lsarticles") {
+            inputError("");
+        }
         if (temp[0] == "lsarticles") {
             if (temp[1].find_first_not_of("0123456789") != std::string::npos) {
                 inputError("Group number must be an integer");
@@ -123,6 +129,9 @@ vector<string> buildInput()
         }
     }
     if (sz > 2) {
+        if(temp[0] != "article") {
+            inputError("");
+        }
         if(std::find(flags.begin(), flags.end(), temp[1]) == flags.end()) {
             inputError("Invalid flag");
         }
@@ -166,7 +175,13 @@ int main(int argc, char* argv[])
     MessageHandler m{};
     while(true) {
         listCommands();
-        vector<string> vec = buildInput();
+        vector<string> vec;
+        try {
+            vec = buildInput();
+        } catch (std::string msg) {
+            std::cout << msg << endl;
+            continue;
+        }
         m.msgServer(conn, vec);
         string reply = m.readString(conn);
         cout << reply << endl;
