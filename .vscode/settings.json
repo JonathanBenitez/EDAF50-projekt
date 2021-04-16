@@ -1,0 +1,13 @@
+{
+    "files.associations": {
+        "system_error": "cpp",
+        "xlocale": "cpp",
+        "xtree": "cpp",
+        "algorithm": "cpp",
+        "list": "cpp",
+        "utility": "cpp",
+        "xstring": "cpp",
+        "map": "cpp",
+        "vector": "cpp"
+    }
+}
